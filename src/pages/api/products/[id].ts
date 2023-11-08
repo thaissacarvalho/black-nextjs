@@ -1,9 +1,52 @@
-import { NextApiRequest, NextApiResponse } from "next"
-import products from '../../../../database.json'
+import { GetStaticPaths, GetStaticProps, NextPage } from "next";
+import { ReactNode } from "react";
+import { Container } from "reactstrap";
+import Header from "../../../Components/Header";
+import ProductDetails from "../../../Components/ProductDetails";
+import { fetchProduct, fetchProducts, ProductType } from "../../../services/products";
+import Head from "next/head"; 
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { id } = req.query
+export const getStaticProps: GetStaticProps = async (context) => {
+  const id = context.params?.id;
 
-  const product = products.find(p => p.id === Number(id))
-  res.status(200).json(product)
+  if (typeof id === 'string') {
+    const product = await fetchProduct(id);
+
+    return { props: { product }, revalidate: 10 };
+  }
+
+  return { redirect: { destination: '/products', permanent: false } };
 }
+
+export const getStaticPaths: GetStaticPaths = async () => {
+  const products = await fetchProducts();
+
+  const paths = products.map(product => {
+    return { params: { id: product.id.toString() } };
+  });
+
+  return { paths, fallback: false };
+}
+
+const Product: NextPage = (props: {
+  children?: ReactNode;
+  product?: ProductType;
+}) => {
+  return (
+    <>
+      <Head>
+        <title>{props.product ? props.product.name : 'Product Name'}</title>
+        <meta name="description" content={props.product ? props.product.description : 'Product Description'} />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
+      <Header />
+
+      <Container className="mt-5">
+        <ProductDetails product={props.product} />
+      </Container>
+    </>
+  );
+}
+
+export default Product;
